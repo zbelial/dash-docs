@@ -487,6 +487,22 @@ Ex: This avoids searching for redis in redis unless you type 'redis redis'"
    ""
    pattern))
 
+(defun dash-docs--delete-docset-name (docname pattern)
+  (let* ((parts (split-string (if pattern pattern "") " " t))
+         (count (length parts))
+         (search-pattern pattern))
+    (when (> count 0)
+      (let ((first (nth 0 parts))
+            (last (nth (1- count) parts)))
+        (if (and (equal (substring first 0 1) ":") (equal (downcase (substring first 1)) (downcase docname)))
+            (setq search-pattern (string-join (cdr parts) " "))
+          (if (and (equal (substring last 0 1) ":") (equal (downcase (substring last 1)) (downcase docname)))
+              (setq search-pattern (string-join (reverse (cdr (reverse parts))) " ")))
+          )))
+    ;; (message "docname %S search pattern %S" docname search-pattern)
+    search-pattern
+    ))
+
 (defun dash-docs--run-query (docset search-pattern)
   "Execute an sql query in dash docset DOCSET looking for SEARCH-PATTERN.
 Return a list of db results.  Ex:
@@ -564,8 +580,10 @@ Get required params to call `dash-docs-result-url' from SEARCH-RESULT."
 
 (defun dash-docs-search-docset (docset pattern)
   "Given a string PATTERN, query DOCSET and retrieve result."
-  (cl-loop for row in (dash-docs--run-query docset pattern)
-           collect (dash-docs--candidate docset row)))
+  (let ((search-pattern (dash-docs--delete-docset-name (car docset) pattern)))
+    (cl-loop for row in (dash-docs--run-query docset search-pattern)
+             collect (dash-docs--candidate docset row)))
+  )
 
 ;;;###autoload
 (defun dash-docs-search (pattern)
